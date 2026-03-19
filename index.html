@@ -21,11 +21,16 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
 .turma-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
 .turma-btn{background:white;border:2px solid #e8e0f5;border-radius:16px;padding:24px 12px;text-align:center;cursor:pointer;font-size:18px;font-weight:800;color:#3d2e8a;font-family:'Nunito',sans-serif;transition:all 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
 .turma-btn:hover{border-color:#d62ad0;background:#fdf0ff;}
-.turma-btn:active{background:linear-gradient(135deg,#f77f00,#d62ad0);color:white;border-color:transparent;}
+.turma-btn:active{transform:scale(0.97);}
+.turma-btn.disabled{opacity:0.4;cursor:not-allowed;pointer-events:none;}
 .done-wrap{text-align:center;padding:60px 20px;}
 .done-icon{font-size:64px;margin-bottom:16px;}
 .done-title{font-size:22px;font-weight:800;color:#3d2e8a;}
 .done-sub{font-size:14px;color:#888;margin-top:10px;line-height:1.6;}
+.already-wrap{text-align:center;padding:60px 20px;}
+.already-icon{font-size:64px;margin-bottom:16px;}
+.already-title{font-size:20px;font-weight:800;color:#3d2e8a;}
+.already-sub{font-size:14px;color:#888;margin-top:10px;line-height:1.6;}
 .pass-wrap{max-width:340px;margin:60px auto;background:white;border-radius:20px;border:1.5px solid #eee;padding:32px 24px;text-align:center;}
 .pass-wrap h3{font-size:17px;font-weight:800;color:#3d2e8a;margin-bottom:6px;}
 .pass-wrap p{font-size:13px;color:#999;margin-bottom:20px;}
@@ -34,7 +39,7 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
 .pass-btn{width:100%;padding:12px;background:linear-gradient(135deg,#f77f00,#d62ad0);color:white;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;}
 .pass-err{color:#e44;font-size:13px;margin-top:8px;display:none;font-weight:700;}
 .mod-wrap{max-width:680px;margin:0 auto;padding:14px 16px 30px;}
-.mod-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.mod-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .mod-title{font-size:16px;font-weight:800;color:#3d2e8a;}
 .mod-meta{font-size:12px;color:#999;margin-top:2px;}
 .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
@@ -53,12 +58,11 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
 .bar-fill{background:linear-gradient(90deg,#f77f00,#d62ad0);height:100%;border-radius:20px;transition:width 0.6s ease;}
 .rank-votes{font-size:13px;font-weight:700;color:#d62ad0;min-width:55px;text-align:right;}
 .rank-pct{font-size:11px;color:#bbb;min-width:36px;text-align:right;font-weight:600;}
-.reset-btn{width:100%;padding:12px;border:2px solid #eee;border-radius:12px;background:white;color:#aaa;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;margin-top:8px;}
+.reset-btn{width:100%;padding:12px;border:2px solid #eee;border-radius:12px;background:white;color:#aaa;font-size:13px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;}
 .reset-btn:hover{border-color:#e44;color:#e44;}
 .chart-wrap{position:relative;width:100%;height:240px;margin-bottom:14px;background:white;border-radius:16px;border:1.5px solid #eee;padding:16px;}
 .logout-btn{font-size:12px;color:#bbb;cursor:pointer;text-decoration:underline;margin-left:10px;font-weight:600;}
-.live-dot{display:inline-block;width:8px;height:8px;background:#1D9E75;border-radius:50%;margin-right:4px;animation:pulse 1.5s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.loading{text-align:center;padding:40px;color:#999;font-size:14px;}
 </style>
 </head>
 <body>
@@ -77,6 +81,14 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
   <div class="voter-wrap">
     <div class="instr">Clica na turma do projeto que achas melhor! 👇</div>
     <div class="turma-grid" id="turmaGrid"></div>
+  </div>
+</div>
+
+<div id="page-already" class="page">
+  <div class="already-wrap">
+    <div class="already-icon">🚫</div>
+    <div class="already-title">Já votaste!</div>
+    <div class="already-sub">Só é permitido um voto por pessoa.<br>Obrigado pela tua participação!</div>
   </div>
 </div>
 
@@ -103,8 +115,8 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
   <div class="mod-wrap">
     <div class="mod-top">
       <div>
-        <div class="mod-title"><span class="live-dot"></span>Painel ao Vivo <span class="logout-btn" onclick="logout()">Sair</span></div>
-        <div class="mod-meta" id="modMeta">A carregar votos...</div>
+        <div class="mod-title">Painel do Moderador <span class="logout-btn" onclick="logout()">Sair</span></div>
+        <div class="mod-meta" id="modMeta">A carregar...</div>
       </div>
       <button class="reset-btn" style="width:auto;padding:8px 16px;" onclick="resetVotes()">🔄 Reiniciar</button>
     </div>
@@ -113,7 +125,7 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
       <div class="stat-c"><div class="stat-n" id="leadName">—</div><div class="stat-l">Líder atual</div></div>
       <div class="stat-c"><div class="stat-n" id="leadVotes">0</div><div class="stat-l">Votos do líder</div></div>
     </div>
-    <div class="ranking-card" id="rankingList"></div>
+    <div class="ranking-card" id="rankingList"><div class="loading">A carregar votos...</div></div>
     <div class="chart-wrap"><canvas id="rankChart"></canvas></div>
     <button class="reset-btn" onclick="resetVotes()">🔄 Reiniciar votação</button>
   </div>
@@ -140,45 +152,57 @@ const votesRef = ref(db, 'votos');
 
 const turmas = ['9.º A','9.º B','9.º C','9.º E1','9.º E2','9.º F','9.º G'];
 const PASS = '7777';
+const VOTED_KEY = 'epd_voted_2026';
 let myChart = null;
 let modUnlocked = false;
 
+function jaVotou() {
+  return localStorage.getItem(VOTED_KEY) === '1';
+}
+
 function buildGrid() {
+  const voted = jaVotou();
   document.getElementById('turmaGrid').innerHTML = turmas.map(t =>
-    `<div class="turma-btn" onclick="window.vote('${t}')">${t}</div>`
+    `<div class="turma-btn${voted?' disabled':''}" onclick="vote('${t}')">${t}</div>`
   ).join('');
+  if(voted) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+    document.getElementById('page-already').classList.add('on');
+  }
 }
 
 window.vote = function(turma) {
-  push(votesRef, { turma, ts: Date.now() });
+  if(jaVotou()) return;
+  push(votesRef, {turma: turma, ts: Date.now()});
+  localStorage.setItem(VOTED_KEY, '1');
   document.getElementById('doneTitle').textContent = 'Votaste em ' + turma + '! 🎉';
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.getElementById('page-done').classList.add('on');
-  setTimeout(() => {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
-    document.getElementById('page-voter').classList.add('on');
-  }, 2500);
-};
+}
 
 window.tryMod = function(el) {
-  document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.sw-btn').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
   if(modUnlocked) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
     document.getElementById('page-mod').classList.add('on');
   } else {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
     document.getElementById('page-pass').classList.add('on');
-    setTimeout(() => document.getElementById('passInput').focus(), 100);
+    setTimeout(()=>document.getElementById('passInput').focus(),100);
   }
-};
+}
 
 window.showVoter = function(el) {
-  document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.sw-btn').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
-  document.getElementById('page-voter').classList.add('on');
-};
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  if(jaVotou()) {
+    document.getElementById('page-already').classList.add('on');
+  } else {
+    document.getElementById('page-voter').classList.add('on');
+  }
+}
 
 window.checkPass = function() {
   const val = document.getElementById('passInput').value;
@@ -186,39 +210,48 @@ window.checkPass = function() {
     modUnlocked = true;
     document.getElementById('passInput').value = '';
     document.getElementById('passErr').style.display = 'none';
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
     document.getElementById('page-mod').classList.add('on');
   } else {
     document.getElementById('passErr').style.display = 'block';
     document.getElementById('passInput').value = '';
     document.getElementById('passInput').focus();
   }
-};
+}
 
 window.logout = function() {
   modUnlocked = false;
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
-  document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.sw-btn').forEach(b=>b.classList.remove('on'));
   document.getElementById('page-voter').classList.add('on');
   document.querySelector('.sw-btn').classList.add('on');
-};
+}
 
 window.resetVotes = function() {
   if(!confirm('Apagar todos os votos? Esta ação não pode ser desfeita.')) return;
   remove(votesRef);
-};
+  localStorage.removeItem(VOTED_KEY);
+}
 
-function updateMod(totals, count) {
-  const sorted = Object.entries(totals).sort((a,b) => b[1]-a[1]);
-  const max = sorted[0]?.[1] || 1;
+function updateMod(data) {
+  const totals = {};
+  turmas.forEach(t => totals[t] = 0);
+  let count = 0;
+  if(data) {
+    Object.values(data).forEach(v => {
+      if(v.turma) { totals[v.turma] = (totals[v.turma]||0) + 1; count++; }
+    });
+  }
+  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
   document.getElementById('totalVotes').textContent = count;
-  document.getElementById('modMeta').textContent = count + ' voto' + (count!==1?'s':'') + ' registado' + (count!==1?'s':'');
-  document.getElementById('leadName').textContent = count > 0 ? sorted[0][0].replace('9.º ','T') : '—';
-  document.getElementById('leadVotes').textContent = count > 0 ? sorted[0][1] : 0;
+  document.getElementById('modMeta').textContent = count+' voto'+(count!==1?'s':'')+' registado'+(count!==1?'s':'');
+  document.getElementById('leadName').textContent = count>0?sorted[0][0].replace('9.º ','T'):'-';
+  document.getElementById('leadVotes').textContent = count>0?sorted[0][1]:0;
   const medals = ['gold','silver','bronze'];
   document.getElementById('rankingList').innerHTML = sorted.map(([t,v],i) => {
-    const pct = max > 0 ? Math.round((v/max)*100) : 0;
-    const vpct = count > 0 ? Math.round((v/count)*100) : 0;
+    const pct = max>0?Math.round((v/max)*100):0;
+    const vpct = count>0?Math.round((v/count)*100):0;
     return `<div class="rank-row">
       <div class="rank-pos ${medals[i]||''}">${i+1}</div>
       <div class="rank-name">${t}</div>
@@ -231,15 +264,15 @@ function updateMod(totals, count) {
 }
 
 function updateChart(sorted) {
-  const labels = sorted.map(([t]) => t);
-  const data = sorted.map(([,v]) => v);
+  const labels = sorted.map(([t])=>t);
+  const data = sorted.map(([,v])=>v);
   const colors = ['#f77f00','#d62ad0','#5c4a9e','#f77f50','#a040c0','#ff9f40','#8060d0'];
   if(myChart) myChart.destroy();
   myChart = new Chart(document.getElementById('rankChart'), {
-    type: 'bar',
-    data: {labels, datasets:[{data, backgroundColor:colors, borderRadius:10, borderSkipped:false}]},
-    options: {
-      responsive:true, maintainAspectRatio:false,
+    type:'bar',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:10,borderSkipped:false}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false}},
       scales:{
         x:{ticks:{color:'#999',font:{size:12,family:'Nunito',weight:'700'}},grid:{display:false}},
@@ -250,19 +283,7 @@ function updateChart(sorted) {
 }
 
 onValue(votesRef, (snapshot) => {
-  const totals = {};
-  turmas.forEach(t => totals[t] = 0);
-  let count = 0;
-  if(snapshot.exists()) {
-    snapshot.forEach(child => {
-      const v = child.val();
-      if(v.turma && totals[v.turma] !== undefined) {
-        totals[v.turma]++;
-        count++;
-      }
-    });
-  }
-  updateMod(totals, count);
+  updateMod(snapshot.val());
 });
 
 buildGrid();
