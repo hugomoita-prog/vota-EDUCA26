@@ -10,18 +10,18 @@
 body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
 .header{background:white;padding:18px 20px 14px;text-align:center;border-bottom:1px solid #eee;}
 .header img{max-width:240px;width:80%;margin-bottom:6px;}
-.header h2{font-size:15px;color:#5c4a9e;font-weight:700;letter-spacing:0.3px;}
+.header h2{font-size:15px;color:#5c4a9e;font-weight:700;}
 .nav-switch{display:flex;gap:8px;padding:12px 16px;max-width:560px;margin:0 auto;}
-.sw-btn{flex:1;padding:10px;border:2px solid #ddd;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;background:white;color:#888;text-align:center;font-family:'Nunito',sans-serif;transition:all 0.15s;}
+.sw-btn{flex:1;padding:10px;border:2px solid #ddd;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;background:white;color:#888;text-align:center;font-family:'Nunito',sans-serif;}
 .sw-btn.on{background:linear-gradient(135deg,#f77f00,#d62ad0);color:white;border-color:transparent;}
 .page{display:none;}
 .page.on{display:block;}
 .voter-wrap{max-width:500px;margin:0 auto;padding:10px 16px 30px;}
 .instr{background:linear-gradient(135deg,#fff3e0,#fce4ec);border-radius:14px;padding:14px 16px;font-size:14px;color:#7b3fa0;margin-bottom:16px;line-height:1.5;text-align:center;font-weight:600;border:1.5px solid #f0c0e0;}
 .turma-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
-.turma-btn{background:white;border:2px solid #e8e0f5;border-radius:16px;padding:24px 12px;text-align:center;cursor:pointer;font-size:18px;font-weight:800;color:#3d2e8a;font-family:'Nunito',sans-serif;transition:all 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
-.turma-btn:hover{border-color:#d62ad0;background:#fdf0ff;transform:scale(1.02);}
-.turma-btn:active{transform:scale(0.97);background:linear-gradient(135deg,#f77f00,#d62ad0);color:white;border-color:transparent;}
+.turma-btn{background:white;border:2px solid #e8e0f5;border-radius:16px;padding:24px 12px;text-align:center;cursor:pointer;font-size:18px;font-weight:800;color:#3d2e8a;font-family:'Nunito',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:all 0.15s;}
+.turma-btn:hover{border-color:#d62ad0;background:#fdf0ff;}
+.turma-btn:active{background:linear-gradient(135deg,#f77f00,#d62ad0);color:white;border-color:transparent;}
 .done-wrap{text-align:center;padding:60px 20px;}
 .done-icon{font-size:64px;margin-bottom:16px;}
 .done-title{font-size:22px;font-weight:800;color:#3d2e8a;}
@@ -57,6 +57,8 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
 .reset-btn:hover{border-color:#e44;color:#e44;}
 .chart-wrap{position:relative;width:100%;height:240px;margin-bottom:14px;background:white;border-radius:16px;border:1.5px solid #eee;padding:16px;}
 .logout-btn{font-size:12px;color:#bbb;cursor:pointer;text-decoration:underline;margin-left:10px;font-weight:600;}
+.live-dot{display:inline-block;width:8px;height:8px;background:#1D9E75;border-radius:50%;margin-right:5px;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
 </style>
 </head>
 <body>
@@ -67,7 +69,7 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
 </div>
 
 <div class="nav-switch">
-  <div class="sw-btn on" onclick="showPage('voter',this)">🗳️ Votar</div>
+  <div class="sw-btn on" onclick="showVoter(this)">🗳️ Votar</div>
   <div class="sw-btn" onclick="tryMod(this)">📊 Moderador</div>
 </div>
 
@@ -101,8 +103,8 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
   <div class="mod-wrap">
     <div class="mod-top">
       <div>
-        <div class="mod-title">Painel do Moderador <span class="logout-btn" onclick="logout()">Sair</span></div>
-        <div class="mod-meta" id="modMeta">0 votos registados</div>
+        <div class="mod-title"><span class="live-dot"></span>Painel ao vivo <span class="logout-btn" onclick="logout()">Sair</span></div>
+        <div class="mod-meta" id="modMeta">A aguardar votos...</div>
       </div>
       <button class="reset-btn" style="width:auto;padding:8px 16px;" onclick="resetVotes()">🔄 Reiniciar</button>
     </div>
@@ -118,133 +120,146 @@ body{font-family:'Nunito',sans-serif;background:#f5f5f8;min-height:100vh;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
-const turmas=['9.º A','9.º B','9.º C','9.º E1','9.º E2','9.º F','9.º G'];
-const KEY='epd_2026_v3';
-const PASS='7777';
-let myChart=null;
-let modUnlocked=false;
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-function loadVotes(){try{return JSON.parse(localStorage.getItem(KEY))||{};}catch(e){return {};}}
-function saveVotes(v){try{localStorage.setItem(KEY,JSON.stringify(v));}catch(e){}}
+  const firebaseConfig = {
+    apiKey: "AIzaSyAY7cyJhNvu-Hq3z3AEQITnO51_xI_1PTg",
+    authDomain: "vota-educa26.firebaseapp.com",
+    databaseURL: "https://vota-educa26-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "vota-educa26",
+    storageBucket: "vota-educa26.firebasestorage.app",
+    messagingSenderId: "941021137307",
+    appId: "1:941021137307:web:82c97d1929c785c3d5793e"
+  };
 
-function getTotals(){
-  const v=loadVotes();const t={};
-  turmas.forEach(x=>t[x]=0);
-  Object.values(v).forEach(turma=>{t[turma]=(t[turma]||0)+1;});
-  return t;
-}
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const votesRef = ref(db, 'votos');
 
-function buildGrid(){
-  document.getElementById('turmaGrid').innerHTML=turmas.map(t=>
-    `<div class="turma-btn" onclick="vote('${t}')">${t}</div>`
-  ).join('');
-}
+  const turmas = ['9.º A','9.º B','9.º C','9.º E1','9.º E2','9.º F','9.º G'];
+  const PASS = '7777';
+  let myChart = null;
+  let modUnlocked = false;
 
-function vote(turma){
-  const v=loadVotes();
-  v['v_'+Date.now()+'_'+Math.random().toString(36).slice(2,5)]=turma;
-  saveVotes(v);
-  document.getElementById('doneTitle').textContent='Votaste em '+turma+'! 🎉';
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  document.getElementById('page-done').classList.add('on');
-  updateMod();
-  setTimeout(()=>{
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-    document.getElementById('page-voter').classList.add('on');
-  },2500);
-}
-
-function tryMod(el){
-  document.querySelectorAll('.sw-btn').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  if(modUnlocked){
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-    document.getElementById('page-mod').classList.add('on');
-    updateMod();
-  } else {
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-    document.getElementById('page-pass').classList.add('on');
-    setTimeout(()=>document.getElementById('passInput').focus(),100);
+  function buildGrid() {
+    document.getElementById('turmaGrid').innerHTML = turmas.map(t =>
+      `<div class="turma-btn" onclick="window._vote('${t}')">${t}</div>`
+    ).join('');
   }
-}
 
-function checkPass(){
-  const val=document.getElementById('passInput').value;
-  if(val===PASS){
-    modUnlocked=true;
-    document.getElementById('passInput').value='';
-    document.getElementById('passErr').style.display='none';
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-    document.getElementById('page-mod').classList.add('on');
-    updateMod();
-  } else {
-    document.getElementById('passErr').style.display='block';
-    document.getElementById('passInput').value='';
-    document.getElementById('passInput').focus();
-  }
-}
+  window._vote = function(turma) {
+    push(votesRef, { turma, ts: Date.now() });
+    document.getElementById('doneTitle').textContent = 'Votaste em ' + turma + '! 🎉';
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    document.getElementById('page-done').classList.add('on');
+    setTimeout(() => {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+      document.getElementById('page-voter').classList.add('on');
+      document.querySelectorAll('.sw-btn')[0].classList.add('on');
+      document.querySelectorAll('.sw-btn')[1].classList.remove('on');
+    }, 2500);
+  };
 
-function logout(){
-  modUnlocked=false;
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('.sw-btn').forEach(b=>b.classList.remove('on'));
-  document.getElementById('page-voter').classList.add('on');
-  document.querySelector('.sw-btn').classList.add('on');
-}
+  onValue(votesRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    const totals = {};
+    turmas.forEach(t => totals[t] = 0);
+    Object.values(data).forEach(v => { if(v.turma) totals[v.turma] = (totals[v.turma]||0) + 1; });
+    const count = Object.values(data).length;
+    const sorted = Object.entries(totals).sort((a,b) => b[1]-a[1]);
+    const max = sorted[0]?.[1] || 1;
 
-function updateMod(){
-  const totals=getTotals();
-  const count=Object.keys(loadVotes()).length;
-  const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
-  const max=sorted[0]?.[1]||1;
-  document.getElementById('totalVotes').textContent=count;
-  document.getElementById('modMeta').textContent=count+' voto'+(count!==1?'s':'')+' registado'+(count!==1?'s':'');
-  document.getElementById('leadName').textContent=count>0?sorted[0][0].replace('9.º ','T'):'-';
-  document.getElementById('leadVotes').textContent=count>0?sorted[0][1]:0;
-  const medals=['gold','silver','bronze'];
-  document.getElementById('rankingList').innerHTML=sorted.map(([t,v],i)=>{
-    const pct=max>0?Math.round((v/max)*100):0;
-    const vpct=count>0?Math.round((v/count)*100):0;
-    return `<div class="rank-row">
-      <div class="rank-pos ${medals[i]||''}">${i+1}</div>
-      <div class="rank-name">${t}</div>
-      <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
-      <div class="rank-votes">${v} votos</div>
-      <div class="rank-pct">${vpct}%</div>
-    </div>`;
-  }).join('');
-  updateChart(sorted);
-}
+    document.getElementById('totalVotes').textContent = count;
+    document.getElementById('modMeta').textContent = count + ' voto' + (count!==1?'s':'') + ' registado' + (count!==1?'s':'');
+    document.getElementById('leadName').textContent = count > 0 ? sorted[0][0].replace('9.º ','T') : '—';
+    document.getElementById('leadVotes').textContent = count > 0 ? sorted[0][1] : 0;
 
-function updateChart(sorted){
-  const labels=sorted.map(([t])=>t);
-  const data=sorted.map(([,v])=>v);
-  const colors=['#f77f00','#d62ad0','#5c4a9e','#f77f50','#a040c0','#ff9f40','#8060d0'];
-  if(myChart)myChart.destroy();
-  myChart=new Chart(document.getElementById('rankChart'),{
-    type:'bar',
-    data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:10,borderSkipped:false}]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{ticks:{color:'#999',font:{size:12,family:'Nunito',weight:'700'}},grid:{display:false}},
-        y:{ticks:{color:'#bbb',font:{size:11},stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}
+    const medals = ['gold','silver','bronze'];
+    document.getElementById('rankingList').innerHTML = sorted.map(([t,v],i) => {
+      const pct = max > 0 ? Math.round((v/max)*100) : 0;
+      const vpct = count > 0 ? Math.round((v/count)*100) : 0;
+      return `<div class="rank-row">
+        <div class="rank-pos ${medals[i]||''}">${i+1}</div>
+        <div class="rank-name">${t}</div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="rank-votes">${v} votos</div>
+        <div class="rank-pct">${vpct}%</div>
+      </div>`;
+    }).join('');
+
+    if(myChart) myChart.destroy();
+    myChart = new Chart(document.getElementById('rankChart'), {
+      type: 'bar',
+      data: {
+        labels: sorted.map(([t]) => t),
+        datasets: [{ data: sorted.map(([,v]) => v), backgroundColor: ['#f77f00','#d62ad0','#5c4a9e','#f77f50','#a040c0','#ff9f40','#8060d0'], borderRadius: 10, borderSkipped: false }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color:'#999', font:{ size:12, family:'Nunito', weight:'700' } }, grid: { display:false } },
+          y: { ticks: { color:'#bbb', font:{ size:11 }, stepSize:1 }, grid: { color:'rgba(0,0,0,0.04)' } }
+        }
       }
-    }
+    });
   });
-}
 
-function resetVotes(){
-  if(!confirm('Apagar todos os votos? Esta ação não pode ser desfeita.'))return;
-  try{localStorage.removeItem(KEY);}catch(e){}
-  updateMod();
-}
+  window._resetVotes = function() {
+    if(!confirm('Apagar todos os votos? Esta ação não pode ser desfeita.')) return;
+    remove(votesRef);
+  };
 
-buildGrid();
-updateMod();
-setInterval(()=>{if(modUnlocked)updateMod();},3000);
+  window._checkPass = function() {
+    const val = document.getElementById('passInput').value;
+    if(val === PASS) {
+      modUnlocked = true;
+      document.getElementById('passInput').value = '';
+      document.getElementById('passErr').style.display = 'none';
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+      document.getElementById('page-mod').classList.add('on');
+    } else {
+      document.getElementById('passErr').style.display = 'block';
+      document.getElementById('passInput').value = '';
+      document.getElementById('passInput').focus();
+    }
+  };
+
+  window._logout = function() {
+    modUnlocked = false;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('on'));
+    document.getElementById('page-voter').classList.add('on');
+    document.querySelectorAll('.sw-btn')[0].classList.add('on');
+  };
+
+  buildGrid();
+</script>
+
+<script>
+function showVoter(el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('page-voter').classList.add('on');
+}
+function tryMod(el) {
+  document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  if(window._modUnlocked) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    document.getElementById('page-mod').classList.add('on');
+  } else {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    document.getElementById('page-pass').classList.add('on');
+    setTimeout(() => document.getElementById('passInput').focus(), 100);
+  }
+}
+function checkPass() { window._checkPass && window._checkPass(); }
+function resetVotes() { window._resetVotes && window._resetVotes(); }
+function logout() { window._logout && window._logout(); }
 </script>
 </body>
 </html>
